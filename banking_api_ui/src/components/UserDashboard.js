@@ -377,7 +377,7 @@ const UserDashboard = ({ user: propUser, onLogout }) => {
         <div className="inline-message inline-message--warning">
           <strong>🔐 Additional verification required</strong>
           <span style={{ marginLeft: 8 }}>
-            Transactions over $500 require MFA. Please verify your identity to continue.
+            Transfers and withdrawals of $250 or more require MFA. Please verify your identity to continue.
           </span>
           <a
             href="/api/auth/oauth/user/stepup?return_to=http://localhost:4000/dashboard"

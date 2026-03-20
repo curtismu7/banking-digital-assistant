@@ -9,6 +9,7 @@ import ActivityLogs from './components/ActivityLogs';
 import Users from './components/Users';
 import Accounts from './components/Accounts';
 import Transactions from './components/Transactions';
+import SecuritySettings from './components/SecuritySettings';
 import './App.css';
 
 function App() {
@@ -202,6 +203,7 @@ function App() {
               <Route path="/users" element={user?.role === 'admin' ? <Users user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
               <Route path="/accounts" element={user?.role === 'admin' ? <Accounts user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
               <Route path="/transactions" element={user?.role === 'admin' ? <Transactions user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
+              <Route path="/settings" element={user?.role === 'admin' ? <SecuritySettings user={user} onLogout={logout} /> : <Navigate to="/" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { requireAdmin, requireScopes } = require('../middleware/auth');
+const runtimeSettings = require('../config/runtimeSettings');
 
 // Get system statistics
 router.get('/stats', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
@@ -287,6 +288,34 @@ router.get('/activity/export', requireAdmin, requireScopes(['banking:admin']), (
 
   } catch (error) {
     console.error('Export activity logs error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Runtime Settings ─────────────────────────────────────────────────────────
+
+// GET /api/admin/settings — return current live settings
+router.get('/settings', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  res.json({
+    settings: runtimeSettings.getAll(),
+    history: runtimeSettings.getHistory(),
+  });
+});
+
+// PUT /api/admin/settings — update one or more settings at runtime
+router.put('/settings', requireAdmin, requireScopes(['banking:admin']), (req, res) => {
+  try {
+    const changedBy = req.user?.email || req.user?.username || 'admin';
+    const result = runtimeSettings.update(req.body, changedBy);
+
+    if (!result.updated) {
+      return res.status(400).json({ error: 'No valid settings fields provided.' });
+    }
+
+    console.log(`[Settings] Updated by ${changedBy}:`, req.body);
+    res.json({ message: 'Settings updated successfully.', settings: result.settings });
+  } catch (error) {
+    console.error('Settings update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

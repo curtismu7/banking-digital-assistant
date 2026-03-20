@@ -376,6 +376,13 @@ const Dashboard = ({ user, onLogout }) => {
           >
             View Transactions
           </button>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => window.location.href = '/settings'}
+            style={{ borderLeft: '3px solid #f59e0b' }}
+          >
+            🔒 Security Settings
+          </button>
         </div>
       </div>
 
