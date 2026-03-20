@@ -1,8 +1,14 @@
 {
   "version": 2,
 
-  "installCommand": "npm ci --prefix banking_api_server",
-  "buildCommand": "npm ci --prefix banking_api_ui && npm run build --prefix banking_api_ui",
+  "build": {
+    "env": {
+      "NODE_VERSION": "18.x"
+    }
+  },
+
+  "installCommand": "npm ci --prefix banking_api_server && npm ci --prefix banking_api_ui",
+  "buildCommand": "cd banking_api_ui && npm run build",
   "outputDirectory": "banking_api_ui/build",
 
   "rewrites": [
