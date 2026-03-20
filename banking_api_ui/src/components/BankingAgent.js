@@ -151,7 +151,20 @@ export default function BankingAgent({ user }) {
       }
       addMessage('assistant', formatResult(result), actionId);
     } catch (err) {
-      addMessage('error', `Error: ${err.message}`, actionId);
+      const isConnErr =
+        err.message.includes('timed out') ||
+        err.message.includes('ECONNREFUSED') ||
+        err.message.includes('ENETUNREACH') ||
+        err.message.includes('mcp_error') ||
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('502');
+      addMessage(
+        'error',
+        isConnErr
+          ? 'Banking Agent is unavailable.\n\nThe MCP server is not reachable.\n\nLocal: cd banking_mcp_server && npm run dev\nVercel: set MCP_SERVER_URL to your hosted MCP server URL.'
+          : `Error: ${err.message}`,
+        actionId
+      );
     } finally {
       setLoading(false);
     }

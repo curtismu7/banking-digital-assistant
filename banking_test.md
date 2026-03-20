@@ -136,6 +136,10 @@ jest.mock('../../services/oauthService', () => impl);  // impl is undefined
 
 ```
 banking-digital-assistant/
+├── vercel.json                                ← Vercel build + routing config
+├── api/
+│   └── handler.js                             ← Vercel serverless entry point
+├── .env.vercel.example                        ← Vercel env var template
 ├── run-tests.sh                               ← top-level runner
 ├── banking_api_server/
 │   ├── jest.config.js                         ← jest setup (setupFilesAfterEnv)
@@ -159,3 +163,72 @@ banking-digital-assistant/
         ├── admin-dashboard.spec.js
         └── security-settings.spec.js
 ```
+
+---
+
+## Vercel Deployment
+
+### Quick Deploy
+
+```bash
+# Install Vercel CLI (one-time)
+npm i -g vercel
+
+# From project root
+cd /path/to/banking-digital-assistant
+vercel
+```
+
+### Architecture on Vercel
+
+```
+https://<your-app>.vercel.app/
+  /               → React build (banking_api_ui/build/)
+  /api/*          → Express serverless (banking_api_server/server.js via api/handler.js)
+```
+
+The MCP WebSocket server must be hosted separately (Vercel doesn't support persistent WS):
+
+| Service | Vercel-compatible hosts |
+|---------|------------------------|
+| `banking_mcp_server` | Railway, Render, Fly.io |
+
+### One-Time Setup Checklist
+
+1. **Redis** (required for OAuth sessions):
+   - Go to [Upstash](https://upstash.com) or use **Vercel KV** (Dashboard → Storage → Add KV)
+   - Copy the `REDIS_URL` (starts with `rediss://`)
+
+2. **Deploy MCP server** (required for BankingAgent):
+   ```bash
+   cd banking_mcp_server && npm run build
+   # Deploy to Railway/Render — copy the WebSocket URL
+   ```
+
+3. **Register OAuth redirect URIs in PingOne**:
+   - Admin callback: `https://<your-app>.vercel.app/api/auth/oauth/callback`
+   - User callback:  `https://<your-app>.vercel.app/api/auth/oauth/user/callback`
+
+4. **Set Vercel environment variables** (see `.env.vercel.example`):
+   ```bash
+   vercel env add REDIS_URL
+   vercel env add SESSION_SECRET
+   vercel env add PINGONE_ENVIRONMENT_ID
+   vercel env add P1AIC_CLIENT_ID
+   # ... (all vars listed in .env.vercel.example)
+   ```
+
+5. **Redeploy** after setting env vars:
+   ```bash
+   vercel --prod
+   ```
+
+### Local vs Vercel behaviour differences
+
+| Feature | Local | Vercel |
+|---------|-------|--------|
+| Session store | MemoryStore | Redis (REDIS_URL required) |
+| Data persistence | JSON files in `data/persistent/` | In-memory (resets on cold start) |
+| MCP server | `localhost:8080` (local) | External host (MCP_SERVER_URL) |
+| OAuth redirects | `http://localhost:3001/...` | `https://<app>.vercel.app/...` |
+| API proxy | CRA `proxy` in package.json | Vercel rewrites in vercel.json |

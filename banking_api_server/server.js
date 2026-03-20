@@ -1,4 +1,4 @@
-// Load environment variables from .env file
+// Load environment variables from .env file (no-op on Vercel where env vars are injected)
 require('dotenv').config();
 
 const express = require('express');
@@ -8,6 +8,29 @@ const morgan = require('morgan');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
+
+// ─── Session store ──────────────────────────────────────────────────────────
+// Vercel serverless functions are stateless — each cold start gets a fresh
+// MemoryStore. For OAuth flows the login-initiation and callback can land on
+// different instances, breaking the CSRF state check.
+// Solution: set REDIS_URL (e.g. from Upstash / Vercel KV) to enable a shared
+// Redis session store. Falls back to MemoryStore for local development.
+let sessionStoreInstance;
+if (process.env.REDIS_URL) {
+  try {
+    const { createClient } = require('redis');
+    const { RedisStore } = require('connect-redis');
+    const redisClient = createClient({ url: process.env.REDIS_URL });
+    redisClient.connect().catch(err => console.error('[Session] Redis connect error:', err.message));
+    redisClient.on('error', err => console.error('[Session] Redis error:', err.message));
+    sessionStoreInstance = new RedisStore({ client: redisClient, prefix: 'banking:sess:' });
+    console.log('[Session] Using Redis session store');
+  } catch (err) {
+    console.warn('[Session] connect-redis setup failed, falling back to MemoryStore:', err.message);
+  }
+}
+
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL;
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -27,7 +50,13 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet());
-app.use(cors());
+// Allow credentials (session cookies) from the configured origin.
+// In development the React CRA proxy makes requests same-origin, so CORS is
+// essentially unused. On Vercel, React and API share the same domain.
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || true,
+  credentials: true
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -45,12 +74,17 @@ app.use(morgan('combined'));
 
 // Session middleware
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-session-secret-key',
+  store: sessionStoreInstance, // undefined → default MemoryStore (local dev)
+  secret: process.env.SESSION_SECRET || 'dev-session-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    // On Vercel / production HTTPS, secure:true is required.
+    // SameSite:none is required on Vercel because the OAuth signoff redirect
+    // comes from an external domain (PingOne) → needs to send cookie.
+    secure: isProduction,
     httpOnly: true,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
