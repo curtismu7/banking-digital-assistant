@@ -126,6 +126,7 @@ jest.mock('../../data/store', () => ({
 
 const app = require('../../server');
 const runtimeSettings = require('../../config/runtimeSettings');
+const { createTransaction } = require('../../data/store');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const userA = (overrides = {}) =>
@@ -243,8 +244,6 @@ describe('Transaction Flows — POST /api/transactions', () => {
   // ── Transfers ─────────────────────────────────────────────────────────────────
   describe('transfer', () => {
     it('should create TWO transactions for a transfer', async () => {
-      const { createTransaction } = require('../../data/store');
-
       const res = await request(app)
         .post('/api/transactions')
         .set('x-test-user', userA())

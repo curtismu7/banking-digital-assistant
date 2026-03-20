@@ -1,5 +1,8 @@
 module.exports = {
   testEnvironment: 'node',
+  // Runs setup.js before each test file so env vars (SKIP_TOKEN_SIGNATURE_VALIDATION,
+  // DEBUG_TOKENS, etc.) are set before any module is require()'d by the test.
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.js'],
   collectCoverageFrom: [
     'middleware/**/*.js',
     'routes/**/*.js',

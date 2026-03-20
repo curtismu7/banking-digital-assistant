@@ -52,23 +52,22 @@ describe('Scope-based Authorization Integration Tests', () => {
         .get('/api/users')
         .set('Authorization', `Bearer ${token}`);
       
-      // For OAuth tokens, admin routes now require banking:admin scope
-      // This should fail with insufficient_scope because it lacks banking:admin scope
+      // requireAdmin fires first — it returns required_access, not requiredScopes/providedScopes
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:admin']);
-      expect(response.body.providedScopes).toEqual(['banking:read']);
+      expect(response.body.required_access).toBe('admin role or banking:admin scope');
     });
 
     it('should deny access to GET /api/users without banking:read scope', async () => {
-      // Create token with admin role but wrong scopes to test scope validation
+      // realm_access.roles is a Keycloak claim that is ignored; role derives from azp claim only.
+      // Token has banking:write but NOT banking:read; requireScopes(['banking:read']) fires first.
       const token = createOAuthToken(['banking:write'], { roles: ['admin'] });
       
       const response = await request(app)
         .get('/api/users')
         .set('Authorization', `Bearer ${token}`);
       
-      // Should fail at scope check, not role check
+      // requireScopes fires before requireAdmin on this route → standard scope error shape
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
       expect(response.body.requiredScopes).toContain('banking:read');
@@ -88,12 +87,10 @@ describe('Scope-based Authorization Integration Tests', () => {
           lastName: 'User'
         });
       
-      // For OAuth tokens, admin routes now require banking:admin scope
-      // This should fail with insufficient_scope because it lacks banking:admin scope
+      // requireAdmin fires first — returns required_access, not requiredScopes/providedScopes
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:admin']);
-      expect(response.body.providedScopes).toEqual(['banking:write']);
+      expect(response.body.required_access).toBe('admin role or banking:admin scope');
     });
 
     it('should deny access to POST /api/users without banking:write scope', async () => {
@@ -587,8 +584,7 @@ describe('Scope-based Authorization Integration Tests', () => {
         
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.requiredScopes).toEqual(['banking:admin']);
-        expect(response.body.providedScopes).toEqual(['banking:read', 'banking:write']);
+        expect(response.body.required_access).toBe('admin role or banking:admin scope');
       });
 
       it('should deny access to admin routes with no scopes', async () => {
@@ -603,8 +599,7 @@ describe('Scope-based Authorization Integration Tests', () => {
         
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.requiredScopes).toEqual(['banking:admin']);
-        expect(response.body.providedScopes).toEqual([]);
+        expect(response.body.required_access).toBe('admin role or banking:admin scope');
       });
 
       it('should allow access to all admin endpoints with banking:admin scope', async () => {
@@ -642,7 +637,7 @@ describe('Scope-based Authorization Integration Tests', () => {
         
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.requiredScopes).toEqual(['banking:admin']);
+        expect(response.body.required_access).toBe('admin role or banking:admin scope');
       });
     });
 
@@ -659,9 +654,11 @@ describe('Scope-based Authorization Integration Tests', () => {
           .get('/api/admin/stats')
           .set('Authorization', `Bearer ${token}`);
         
+        // realm_access.roles is ignored (Keycloak claim); requireAdmin rejects with admin-specific error
         expect(response.status).toBe(403);
         expect(response.body.error).toBe('insufficient_scope');
-        expect(response.body.error_description).toBe('Access denied. At least one of the following scopes is required: banking:admin');
+        expect(response.body.error_description).toContain('Admin access required');
+        expect(response.body.required_access).toBe('admin role or banking:admin scope');
       });
 
       it('should handle OAuth token with banking:admin scope but no admin role', async () => {

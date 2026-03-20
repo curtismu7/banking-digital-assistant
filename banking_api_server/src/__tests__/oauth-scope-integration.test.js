@@ -362,12 +362,10 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
         .get('/api/admin/stats')
         .set('Authorization', `Bearer ${token}`);
       
+      // requireAdmin fires first — returns required_access, not requiredScopes/providedScopes
       expect(response.status).toBe(403);
-      expect(response.body).toMatchObject({
-        error: 'insufficient_scope',
-        requiredScopes: ['banking:admin'],
-        providedScopes: ['banking:read', 'banking:write']
-      });
+      expect(response.body.error).toBe('insufficient_scope');
+      expect(response.body.required_access).toBe('admin role or banking:admin scope');
     });
 
     it('should deny user management without banking:admin scope', async () => {
@@ -379,7 +377,7 @@ describe('OAuth Scope-based Authorization Integration Tests', () => {
       
       expect(response.status).toBe(403);
       expect(response.body.error).toBe('insufficient_scope');
-      expect(response.body.requiredScopes).toEqual(['banking:admin']);
+      expect(response.body.required_access).toBe('admin role or banking:admin scope');
     });
   });
 
