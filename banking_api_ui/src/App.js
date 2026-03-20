@@ -120,64 +120,29 @@ function App() {
 
 
 
-  const logout = async () => {
-    console.log('🚪 Starting logout process...');
-    
-    try {
-      // Set a logout flag to prevent auto-login
-      localStorage.setItem('userLoggedOut', 'true');
-      
-      // Clear any potential auth-related localStorage items (cleanup from old JWT implementation)
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      
-      // Clear sessionStorage as well
-      sessionStorage.clear();
-      
-      // Dispatch logout event for chat widget
-      window.dispatchEvent(new CustomEvent('userLoggedOut'));
-      
-      // Clear user state
-      setUser(null);
-      
-      // Call server-side logout to destroy session
-      console.log('🔄 Calling server-side logout...');
-      
-      // Try both logout endpoints (we don't know which session type is active)
-      try {
-        await axios.get('/api/auth/oauth/logout');
-        console.log('✅ Admin OAuth session destroyed');
-      } catch (error) {
-        console.log('ℹ️ Admin OAuth logout failed (may not be logged in as admin):', error.message);
-      }
-      
-      try {
-        await axios.get('/api/auth/oauth/user/logout');
-        console.log('✅ End user OAuth session destroyed');
-      } catch (error) {
-        console.log('ℹ️ End user OAuth logout failed (may not be logged in as end user):', error.message);
-      }
-      
-      console.log('✅ Logout completed - OAuth sessions cleared, logout flag set');
-      
-    } catch (error) {
-      console.error('❌ Error during logout:', error.message);
-      // Continue with logout even if server call fails
-    }
-    
-    // Clear all cookies by setting them to expire
-    document.cookie.split(";").forEach(function(c) { 
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-    });
-    
-    console.log('🍪 All cookies cleared');
-    
-    // Force a complete page reload to ensure clean state
-    setTimeout(() => {
-      window.location.replace('/');
-    }, 500);
+  const logout = () => {
+    console.log('🚪 Starting logout — navigating to /api/auth/logout');
+
+    // Signal that the user intentionally logged out so the startup
+    // session-check in useEffect skips auto-login on return to /login.
+    localStorage.setItem('userLoggedOut', 'true');
+
+    // Clear leftover client-side storage.
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    sessionStorage.clear();
+
+    // Notify the chat widget immediately.
+    window.dispatchEvent(new CustomEvent('userLoggedOut'));
+
+    // Navigate the browser directly (NOT via axios) to the unified logout
+    // endpoint. Express will destroy the server session, then 302-redirect
+    // the browser to PingOne's RP-Initiated Logout → post_logout_redirect_uri
+    // (/login). This ensures the PingOne SSO session is actually terminated
+    // and a subsequent login will prompt for credentials fresh.
+    window.location.href = '/api/auth/logout';
   };
 
   if (loading) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import axios from 'axios';
 import apiClient from '../services/apiClient';
+import BankingAgent from './BankingAgent';
 
 const Dashboard = ({ user, onLogout }) => {
   const [stats, setStats] = useState(null);
@@ -596,6 +597,9 @@ const Dashboard = ({ user, onLogout }) => {
           </div>
         </div>
       )}
+
+      {/* Banking AI Assistant — floating chat panel (available for admin too) */}
+      <BankingAgent user={user} />
     </div>
   );
 };

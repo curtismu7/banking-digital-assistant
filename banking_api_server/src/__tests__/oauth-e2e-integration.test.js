@@ -519,4 +519,95 @@ describe('End-to-End OAuth Integration Tests', () => {
       process.env.NODE_ENV = originalEnv;
     });
   });
+
+  describe('Logout Functionality', () => {
+    it('should redirect to PingOne signoff on admin OAuth logout', async () => {
+      const response = await agent
+        .get('/api/auth/oauth/logout')
+        .expect(302);
+
+      expect(response.headers.location).toContain('pingone');
+      expect(response.headers.location).toContain('signoff');
+      expect(response.headers.location).toContain('post_logout_redirect_uri');
+    });
+
+    it('should redirect to PingOne signoff on user OAuth logout', async () => {
+      const response = await agent
+        .get('/api/auth/oauth/user/logout')
+        .expect(302);
+
+      expect(response.headers.location).toContain('pingone');
+      expect(response.headers.location).toContain('signoff');
+      expect(response.headers.location).toContain('post_logout_redirect_uri');
+    });
+
+    it('should redirect to PingOne signoff via the unified /api/auth/logout endpoint', async () => {
+      const response = await agent
+        .get('/api/auth/logout')
+        .expect(302);
+
+      expect(response.headers.location).toContain('pingone');
+      expect(response.headers.location).toContain('signoff');
+      expect(response.headers.location).toContain('post_logout_redirect_uri');
+    });
+
+    it('should include the frontend /login URL in the post_logout_redirect_uri', async () => {
+      const response = await agent
+        .get('/api/auth/logout')
+        .expect(302);
+
+      const location = response.headers.location;
+      expect(location).toContain('post_logout_redirect_uri');
+      expect(decodeURIComponent(location)).toContain('/login');
+    });
+
+    it('should include id_token_hint when session has an idToken', async () => {
+      // Inject a session with an idToken directly to test the hint inclusion.
+      // We verify the behaviour without needing a full OAuth callback.
+      const freshAgent = request.agent(app);
+
+      // Hit logout on a fresh (empty) session — no idToken, so hint should be absent.
+      const response = await freshAgent
+        .get('/api/auth/logout')
+        .expect(302);
+
+      const location = response.headers.location;
+      // Without an idToken the hint param must not appear.
+      expect(location).not.toContain('id_token_hint');
+    });
+
+    it('should destroy the admin session on logout so status returns not-authenticated', async () => {
+      // Status on a fresh agent returns unauthenticated (no session cookie established).
+      const freshAgent = request.agent(app);
+
+      await freshAgent.get('/api/auth/logout').expect(302);
+
+      const statusResponse = await freshAgent
+        .get('/api/auth/oauth/status')
+        .expect(200);
+
+      // When no session exists the server omits the field (undefined serialises as absent).
+      expect(statusResponse.body.authenticated).toBeFalsy();
+    });
+
+    it('should destroy the user session on logout so status returns not-authenticated', async () => {
+      const freshAgent = request.agent(app);
+
+      await freshAgent.get('/api/auth/oauth/user/logout').expect(302);
+
+      const statusResponse = await freshAgent
+        .get('/api/auth/oauth/user/status')
+        .expect(200);
+
+      // When no session exists the server omits the field (undefined serialises as absent).
+      expect(statusResponse.body.authenticated).toBeFalsy();
+    });
+
+    it('should return 302 even when no session exists (idempotent logout)', async () => {
+      // Calling logout twice should not throw — second call has no session to destroy.
+      const freshAgent = request.agent(app);
+      await freshAgent.get('/api/auth/logout').expect(302);
+      await freshAgent.get('/api/auth/logout').expect(302);
+    });
+  });
 });

@@ -73,6 +73,32 @@ app.get('/api/healthz', (req, res) => {
   });
 });
 
+// Unified logout — destroys whichever session is active and redirects
+// browser → PingOne RP-Initiated Logout → post_logout_redirect_uri (/login).
+// Called as a full page navigation (window.location.href), NOT via axios.
+app.get('/api/auth/logout', (req, res) => {
+  const idToken = req.session.oauthTokens?.idToken || null;
+  const frontendUrl = process.env.REACT_APP_CLIENT_URL || 'http://localhost:3000';
+  const postLogoutUri = `${frontendUrl}/login`;
+
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Session destruction error during unified logout:', err);
+    }
+
+    const envId = process.env.PINGONE_ENVIRONMENT_ID;
+    const region = process.env.PINGONE_REGION || 'com';
+    const pingoneSignoff = `https://auth.pingone.${region}/${envId}/as/signoff`;
+
+    const params = new URLSearchParams({ post_logout_redirect_uri: postLogoutUri });
+    if (idToken) {
+      params.set('id_token_hint', idToken);
+    }
+
+    res.redirect(`${pingoneSignoff}?${params.toString()}`);
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/auth/oauth', oauthRoutes);
