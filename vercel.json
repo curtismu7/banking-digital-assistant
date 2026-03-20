@@ -3,7 +3,9 @@
 
   "build": {
     "env": {
-      "NODE_VERSION": "18.x"
+      "NODE_VERSION": "18",
+      "CI": "false",
+      "GENERATE_SOURCEMAP": "false"
     }
   },
 
