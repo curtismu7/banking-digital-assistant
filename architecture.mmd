@@ -1,0 +1,161 @@
+---
+title: Banking Digital Assistant — Architecture & Key Connections
+---
+flowchart TB
+    %% ── External Users ────────────────────────────────────────────────────────
+    AdminBrowser["🖥️ Admin Browser\n(port 3000)"]
+    CustomerBrowser["🖥️ Customer Browser\n(port 3000)"]
+
+    %% ── Frontend ──────────────────────────────────────────────────────────────
+    subgraph UI["banking_api_ui  (React 18 · CRA · port 3000)"]
+        direction TB
+        Login["Login Component\nOAuth PKCE redirect"]
+        Dashboard["Admin Dashboard\n/admin /transactions /users /accounts"]
+        UserDash["User Dashboard\n/dashboard"]
+        SecuritySettings["Security Settings\n/settings — Step-up + Authorize config"]
+        ChatWidget["AI Chat Widget\n(WebSocket to MCP)"]
+    end
+
+    %% ── API Server ────────────────────────────────────────────────────────────
+    subgraph API["banking_api_server  (Express · Node.js · port 3001)"]
+        direction TB
+        AuthRoutes["/api/auth\n/api/auth/oauth\n/api/auth/oauth/user"]
+        TxRoutes["/api/transactions\ndeposit · withdrawal · transfer"]
+        AdminRoutes["/api/admin/settings\nGET · PUT runtime config"]
+        UserRoutes["/api/users"]
+        AccountRoutes["/api/accounts"]
+        Health["/api/healthz  /health"]
+
+        subgraph Middleware["Middleware Stack"]
+            AuthMW["authenticateToken\nJWT validation / SKIP_TOKEN_SIGNATURE_VALIDATION"]
+            ScopeMW["requireScopes\nbanking:transactions:write etc."]
+            AdminMW["requireAdmin\nazp === PINGONE_ADMIN_CLIENT_ID"]
+            RateLimiter["express-rate-limit"]
+            Session["express-session"]
+            ActivityLog["logActivity middleware"]
+        end
+
+        subgraph Gates["Security Gates  (transactions.js)"]
+            StepUpGate["Step-Up MFA Gate\namount ≥ threshold AND type in types\nACR check → 428 step_up_required"]
+            AuthorizeGate["PingOne Authorize Gate\nPDP evaluation → PERMIT / DENY / INDETERMINATE\nFail-open on error"]
+        end
+
+        subgraph RuntimeSettings["runtimeSettings.js  (in-memory singleton)"]
+            RSFields["stepUpEnabled · stepUpAmountThreshold\nstepUpAcrValue · stepUpTransactionTypes\nauthorizeEnabled · authorizePolicyId"]
+            RSHistory["Change history  (last 50 entries)"]
+        end
+
+        subgraph DataStore["data/store.js  (in-memory Maps)"]
+            Users["Users Map"]
+            Accounts["Accounts Map"]
+            Transactions["Transactions Map"]
+            ActivityLogs["Activity Logs\n(persistent JSON)"]
+        end
+
+        AuthorizeService["pingOneAuthorizeService.js\nclient_credentials → worker token\nPOST /governance/policyDecisionPoints/{id}/evaluate"]
+        OAuthMonitor["oauthHealthMonitor.js\nmetrics · healthStatus"]
+    end
+
+    %% ── MCP Server ────────────────────────────────────────────────────────────
+    subgraph MCP["banking_mcp_server  (TypeScript · WebSocket · port 8080)"]
+        MCPProtocol["MCP Protocol Handler\n(Model Context Protocol)"]
+        MCPTools["Tools: get_account_balance\ncreate_transaction · get_transactions\nget_user_info · transfer_funds"]
+        MCPAuth["Token exchange\nclient_credentials scope validation"]
+    end
+
+    %% ── LangChain Agent ───────────────────────────────────────────────────────
+    subgraph Agent["langchain_agent  (Python · FastAPI · port 8888)"]
+        FastAPI["FastAPI  /chat  /health"]
+        LangChain["LangChain AgentExecutor\ngpt-3.5-turbo / gpt-4"]
+        MCPClientPy["MCP Client\n(WebSocket)"]
+    end
+
+    %% ── External Services ─────────────────────────────────────────────────────
+    subgraph PingOneCloud["☁️ PingOne  (auth.pingone.com / {region})"]
+        direction LR
+        OIDC_AS["Authorization Server\n/as/authorize  /as/token  /as/userinfo"]
+        JWKS["JWKS Endpoint\n/as/jwks  (RFC 7517)"]
+        UserMgmt["User Management API\n/v1/environments/{env}/users"]
+        AppRegistration["Dynamic Client Registration\n/as/registration  (RFC 7591)"]
+    end
+
+    subgraph PingOneAuthorize["☁️ PingOne Authorize"]
+        PDP["Policy Decision Point\n/v1/environments/{env}/governance\n/policyDecisionPoints/{id}/evaluate"]
+    end
+
+    OpenAI["☁️ OpenAI API\ngpt-3.5-turbo · gpt-4"]
+
+    %% ── Connections: Browser → UI ──────────────────────────────────────────────
+    AdminBrowser -->|"HTTPS"| UI
+    CustomerBrowser -->|"HTTPS"| UI
+
+    %% ── Connections: UI → API (proxied via CRA proxy :3001) ───────────────────
+    Login -->|"redirect\nOAuth PKCE  RFC 6749 + RFC 7636"| OIDC_AS
+    Login -->|"GET /api/auth/oauth/status"| AuthRoutes
+    Dashboard -->|"GET /api/admin/settings"| AdminRoutes
+    SecuritySettings -->|"GET · PUT /api/admin/settings"| AdminRoutes
+    UserDash -->|"GET /api/transactions/my"| TxRoutes
+    ChatWidget -->|"WebSocket"| MCPProtocol
+
+    %% ── Connections: UI → MCP ─────────────────────────────────────────────────
+    ChatWidget -->|"WebSocket  MCP Protocol"| MCPProtocol
+
+    %% ── Connections: API ↔ PingOne ────────────────────────────────────────────
+    AuthRoutes -->|"PKCE auth code exchange\nRFC 6749 §4.1 · RFC 7636"| OIDC_AS
+    AuthMW -->|"JWKS token validation\nRFC 7519 · RFC 7517"| JWKS
+    AuthorizeService -->|"client_credentials  RFC 6749 §4.4\nPDP evaluate  POST"| PingOneAuthorize
+    AuthRoutes -->|"Dynamic registration  RFC 7591"| AppRegistration
+    AdminRoutes -->|"User Management API"| UserMgmt
+
+    %% ── Connections: Gates → Services ─────────────────────────────────────────
+    TxRoutes --> StepUpGate
+    StepUpGate --> AuthorizeGate
+    AuthorizeGate --> AuthorizeService
+    AdminRoutes --> RuntimeSettings
+    RuntimeSettings --> Gates
+
+    %% ── Connections: API → DataStore ──────────────────────────────────────────
+    TxRoutes --> DataStore
+    UserRoutes --> DataStore
+    AccountRoutes --> DataStore
+
+    %% ── Connections: MCP → API ────────────────────────────────────────────────
+    MCPTools -->|"REST  Bearer token\nscope: banking:transactions:write etc."| TxRoutes
+    MCPAuth -->|"token validation"| AuthMW
+    MCPClientPy -->|"WebSocket  MCP Protocol"| MCPProtocol
+
+    %% ── Connections: Agent → MCP + OpenAI ─────────────────────────────────────
+    LangChain --> MCPClientPy
+    LangChain -->|"HTTPS  API Key"| OpenAI
+    FastAPI --> LangChain
+
+    %% ── Connections: OAuthMonitor ─────────────────────────────────────────────
+    OAuthMonitor -->|"OIDC discovery ping"| OIDC_AS
+    Health --> OAuthMonitor
+
+    %% ── Standards Legend ──────────────────────────────────────────────────────
+    subgraph Standards["Standards & Protocols"]
+        direction LR
+        S1["RFC 6749 — OAuth 2.0"]
+        S2["RFC 7636 — PKCE"]
+        S3["OIDC Core 1.0 — ID Tokens"]
+        S4["RFC 7519 — JWT"]
+        S5["RFC 7517 — JWKS"]
+        S6["RFC 7591 — Dynamic Client Reg"]
+        S7["MCP — Model Context Protocol"]
+    end
+
+    %% ── Styling ───────────────────────────────────────────────────────────────
+    classDef external fill:#e8f4fd,stroke:#2980b9,color:#1a252f
+    classDef frontend fill:#eafaf1,stroke:#27ae60,color:#1a252f
+    classDef backend fill:#fef9e7,stroke:#f39c12,color:#1a252f
+    classDef mcp fill:#f4ecf7,stroke:#8e44ad,color:#1a252f
+    classDef agent fill:#fdebd0,stroke:#e67e22,color:#1a252f
+    classDef standard fill:#f2f3f4,stroke:#95a5a6,color:#566573
+
+    class PingOneCloud,PingOneAuthorize,OpenAI external
+    class UI,Login,Dashboard,UserDash,SecuritySettings,ChatWidget frontend
+    class API,AuthRoutes,TxRoutes,AdminRoutes,UserRoutes,AccountRoutes,Health,Middleware,Gates,RuntimeSettings,DataStore,AuthorizeService,OAuthMonitor backend
+    class MCP,MCPProtocol,MCPTools,MCPAuth mcp
+    class Agent,FastAPI,LangChain,MCPClientPy agent
+    class Standards,S1,S2,S3,S4,S5,S6,S7 standard
