@@ -1,0 +1,98 @@
+[
+  {
+    "id": "1",
+    "username": "john.doe",
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "password": "$2a$10$oLHSyQ8KqNuuFh4eQ8FzNOHskg47ChyeAbYgI90e4bzsAZK64yeda",
+    "role": "customer",
+    "createdAt": "2024-01-15T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "2",
+    "username": "jane.smith",
+    "email": "jane.smith@example.com",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "password": "$2a$10$4XNV8vhbaOlhCM.KVji8IOKddGpkKACg1k6qIUkEtXnbHDZum0OK2",
+    "role": "customer",
+    "createdAt": "2024-01-20T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "3",
+    "username": "mike.johnson",
+    "email": "mike.johnson@example.com",
+    "firstName": "Mike",
+    "lastName": "Johnson",
+    "password": "$2a$10$laXGA5IebHUxXCavcVzrZupVPgF/dVktiCYj5.hODDWK61L0k8TLi",
+    "role": "customer",
+    "createdAt": "2024-02-01T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "4",
+    "username": "admin",
+    "firstName": "",
+    "lastName": "",
+    "password": "$2a$10$7rYuqKEgeWe1lOh/suyQCOJUr/5UTcfZr9rHpoIY9kZ1t7ERYZYfG",
+    "role": "admin",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "isActive": true,
+    "oauthProvider": "p1AIC",
+    "oauthId": "0745be64-e868-4a64-ac32-efe96bc79dc9"
+  },
+  {
+    "id": "734da1cc-e6a6-4815-82ff-6937f0a12e84",
+    "username": "atibbs42@mailinator.com",
+    "email": "atibbs42@mailinator.com",
+    "firstName": "Allen",
+    "lastName": "Tibbs",
+    "role": "admin",
+    "isActive": true,
+    "createdAt": "2025-08-13T13:19:35.712Z",
+    "oauthProvider": "p1AIC",
+    "oauthId": "734da1cc-e6a6-4815-82ff-6937f0a12e84",
+    "password": null
+  },
+  {
+    "id": "46760edd-828c-4edf-80a3-d4f640d236a0",
+    "username": "jskalla42@mailinator.com",
+    "email": "jskalla42@mailinator.com",
+    "firstName": "Jake",
+    "lastName": "Skalla",
+    "role": "customer",
+    "isActive": true,
+    "createdAt": "2025-08-15T14:34:20.263Z",
+    "oauthProvider": "p1AIC",
+    "oauthId": "46760edd-828c-4edf-80a3-d4f640d236a0",
+    "password": null
+  },
+  {
+    "id": "d6b80470-bd06-4bff-ab6b-1c358d5d69df",
+    "username": "dennis.andrade@example.com",
+    "email": "dennis.andrade@example.com",
+    "firstName": "Dennis",
+    "lastName": "Andrade",
+    "role": "customer",
+    "isActive": true,
+    "createdAt": "2025-10-03T21:10:27.005Z",
+    "oauthProvider": "p1AIC",
+    "oauthId": "d6b80470-bd06-4bff-ab6b-1c358d5d69df",
+    "password": null
+  },
+  {
+    "id": "230a9c05-d98e-4dd6-80f5-190b48dc063e",
+    "username": "bankuser",
+    "firstName": "",
+    "lastName": "",
+    "role": "customer",
+    "isActive": true,
+    "createdAt": "2026-03-20T11:56:57.043Z",
+    "oauthProvider": "p1AIC",
+    "oauthId": "230a9c05-d98e-4dd6-80f5-190b48dc063e",
+    "password": null
+  }
+]

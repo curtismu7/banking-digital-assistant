@@ -1,0 +1,112 @@
+[
+  {
+    "id": "1",
+    "userId": "1",
+    "accountNumber": "1001-2345-6789",
+    "accountType": "checking",
+    "balance": 2500,
+    "currency": "USD",
+    "createdAt": "2024-01-15T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "2",
+    "userId": "1",
+    "accountNumber": "1001-2345-6790",
+    "accountType": "savings",
+    "balance": 15000,
+    "currency": "USD",
+    "createdAt": "2024-01-15T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "3",
+    "userId": "2",
+    "accountNumber": "1002-3456-7890",
+    "accountType": "checking",
+    "balance": 3200.5,
+    "currency": "USD",
+    "createdAt": "2024-01-20T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "4",
+    "userId": "2",
+    "accountNumber": "1002-3456-7891",
+    "accountType": "savings",
+    "balance": 8500.75,
+    "currency": "USD",
+    "createdAt": "2024-01-20T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "5",
+    "userId": "3",
+    "accountNumber": "1003-4567-8901",
+    "accountType": "checking",
+    "balance": 1800.25,
+    "currency": "USD",
+    "createdAt": "2024-02-01T00:00:00.000Z",
+    "isActive": true
+  },
+  {
+    "id": "7827a525-ce2c-41bd-8246-6a3f74781889",
+    "userId": "46760edd-828c-4edf-80a3-d4f640d236a0",
+    "accountNumber": "1008961-3606-3083",
+    "accountType": "checking",
+    "balance": 6867.5,
+    "currency": "USD",
+    "createdAt": "2025-08-15T14:34:20.265Z",
+    "isActive": true
+  },
+  {
+    "id": "60475cc8-7716-4351-b0f4-f838d5e33d92",
+    "userId": "46760edd-828c-4edf-80a3-d4f640d236a0",
+    "accountNumber": "1009324-6167-5926",
+    "accountType": "savings",
+    "balance": 9567.500000000002,
+    "currency": "USD",
+    "createdAt": "2025-08-15T14:34:20.266Z",
+    "isActive": true
+  },
+  {
+    "id": "e8a681f5-9e88-4ec4-8220-b2b87d568b83",
+    "userId": "d6b80470-bd06-4bff-ab6b-1c358d5d69df",
+    "accountNumber": "1004382-7960-4912",
+    "accountType": "checking",
+    "balance": 3232,
+    "currency": "USD",
+    "createdAt": "2025-10-03T21:10:27.007Z",
+    "isActive": true
+  },
+  {
+    "id": "d6ded614-f368-4bd6-98d4-2235d1ff7cfd",
+    "userId": "d6b80470-bd06-4bff-ab6b-1c358d5d69df",
+    "accountNumber": "1008838-5281-2670",
+    "accountType": "savings",
+    "balance": 13372,
+    "currency": "USD",
+    "createdAt": "2025-10-03T21:10:27.007Z",
+    "isActive": true
+  },
+  {
+    "id": "34f6ee3e-ef58-43fb-9b90-3eb468abca2e",
+    "userId": "230a9c05-d98e-4dd6-80f5-190b48dc063e",
+    "accountNumber": "1004888-5980-6347",
+    "accountType": "checking",
+    "balance": 831.79,
+    "currency": "USD",
+    "createdAt": "2026-03-20T11:56:57.046Z",
+    "isActive": true
+  },
+  {
+    "id": "e9a634b9-fad8-4a37-b2a0-97c65bb5e230",
+    "userId": "230a9c05-d98e-4dd6-80f5-190b48dc063e",
+    "accountNumber": "1001780-8906-4862",
+    "accountType": "savings",
+    "balance": 11117.21,
+    "currency": "USD",
+    "createdAt": "2026-03-20T11:56:57.046Z",
+    "isActive": true
+  }
+]
