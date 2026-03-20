@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const dataStore = require('../data/store');
 const { authenticateToken, requireScopes } = require('../middleware/auth');
+const runtimeSettings = require('../config/runtimeSettings');
+const pingOneAuthorizeService = require('../services/pingOneAuthorizeService');
 
 // Get all transactions (admin only)
 router.get('/', authenticateToken, requireScopes(['banking:transactions:read', 'banking:read']), async (req, res) => {
@@ -161,18 +163,20 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
     }
 
     // ── Step-up MFA gate ─────────────────────────────────────────────────────
-    // Non-admin transactions above the threshold need a fresh token carrying
-    // the step-up ACR value matching the PingOne Sign-On Policy name (e.g. 'Multi_factor').
-    const STEP_UP_THRESHOLD = parseFloat(process.env.STEP_UP_AMOUNT_THRESHOLD) || 500;
-    const STEP_UP_ACR = process.env.STEP_UP_ACR_VALUE || 'Multi_factor';
+    // Transfers and withdrawals above the threshold require a fresh MFA token.
+    // All values are read from runtimeSettings (configurable via admin UI at /settings).
+    const STEP_UP_THRESHOLD = runtimeSettings.get('stepUpAmountThreshold');
+    const STEP_UP_ACR = runtimeSettings.get('stepUpAcrValue');
+    const STEP_UP_TYPES = runtimeSettings.get('stepUpTransactionTypes');
+    const STEP_UP_ENABLED = runtimeSettings.get('stepUpEnabled');
 
-    if (req.user.role !== 'admin' && parseFloat(amount) > STEP_UP_THRESHOLD) {
+    if (STEP_UP_ENABLED && req.user.role !== 'admin' && STEP_UP_TYPES.includes(type) && parseFloat(amount) >= STEP_UP_THRESHOLD) {
       const userAcr = req.user.acr;
       if (!userAcr || userAcr !== STEP_UP_ACR) {
         console.log(`[StepUp] Amount ${amount} exceeds threshold ${STEP_UP_THRESHOLD}. User ACR: ${userAcr}. Requiring step-up.`);
         return res.status(428).json({
           error: 'step_up_required',
-          error_description: `Transactions over $${STEP_UP_THRESHOLD} require additional authentication (MFA).`,
+          error_description: `Transfers and withdrawals of $${STEP_UP_THRESHOLD} or more require additional authentication (MFA). Update this threshold in Admin → Security Settings.`,
           step_up_acr: STEP_UP_ACR,
           step_up_url: '/api/auth/oauth/user/stepup',
           amount_threshold: STEP_UP_THRESHOLD,
@@ -180,6 +184,39 @@ router.post('/', authenticateToken, requireScopes(['banking:transactions:write',
       }
     }
     // ── End step-up gate ──────────────────────────────────────────────────────
+
+    // ── PingOne Authorize gate ────────────────────────────────────────────────
+    // When enabled, evaluates the transaction against the configured Authorize
+    // policy decision point. Runs in addition to (not instead of) the threshold
+    // gate above — both controls remain active independently.
+    const AUTHORIZE_ENABLED = runtimeSettings.get('authorizeEnabled');
+    const AUTHORIZE_POLICY_ID = runtimeSettings.get('authorizePolicyId');
+
+    if (AUTHORIZE_ENABLED && AUTHORIZE_POLICY_ID && req.user.role !== 'admin') {
+      try {
+        const { decision } = await pingOneAuthorizeService.evaluateTransaction({
+          policyId: AUTHORIZE_POLICY_ID,
+          userId: req.user.id,
+          amount: parseFloat(amount),
+          type,
+          acr: req.user.acr,
+        });
+        console.log(`[Authorize] Policy ${AUTHORIZE_POLICY_ID} — user ${req.user.id} — decision: ${decision}`);
+        if (decision === 'DENY') {
+          return res.status(403).json({
+            error: 'transaction_denied',
+            error_description: 'This transaction was denied by the authorization policy.',
+            authorize_policy_id: AUTHORIZE_POLICY_ID,
+          });
+        }
+      } catch (err) {
+        // Fail open with a warning so a misconfigured Authorize integration
+        // does not block all transactions. Change to fail-closed here if your
+        // security posture requires it.
+        console.warn(`[Authorize] Policy evaluation error — failing open: ${err.message}`);
+      }
+    }
+    // ── End Authorize gate ────────────────────────────────────────────────────
 
     // For transfers, create two separate transactions
     if (type === 'transfer') {
